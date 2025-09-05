@@ -81,10 +81,6 @@ function checkAccess(Request $request, $ability = null)
     return $token;
 }
 
-
-
-
-
 Route::post('/login', function (Request $request) {
     $data = $request->validate([
         'email' => ['required', 'email'],
@@ -153,12 +149,12 @@ Route::get('/boards/{id}', function ($id) {
 });
 
 
-Route::get('/boards', function () {
-    return Board::orderBy();
+Route::get('/boards', function(){
+    return Board::all();
 
 });
 
-Route::get('/cards/{id}', function ($id) {
+Route::get('/cards/{id}', function($id) {
     return Card::findOrFail($id);
 });
 
@@ -176,13 +172,13 @@ Route::post('/boards', function (Request $request) {
 
     $data = $request->validate([
         'title' => ['required', 'string', 'max:80'],
-        'owner_id' => ['required', 'string', 'min:8'],
+        'owner_id' => ['required', 'int'],
         'description' => ['required', 'string'],
     ]);
 
     $board = new Board();
     $board->title = $data['title'];
-     $board->owner_id = $data['owner_id'];
+    $board->owner_id = $data['owner_id'];
     $board->description = $data['description'];
     $board->save();
 
@@ -191,6 +187,11 @@ Route::post('/boards', function (Request $request) {
 
 
 Route::match(['patch'], '/boards/{id}', function (Request $request, $id) {
+
+    $token = checkAccess($request);
+    if (!$token)
+        return response()->json(['message' => 'Não autenticado.'], 401);
+
     $board = Board::findOrFail($id);
 
     $data = $request->validate([
@@ -200,10 +201,167 @@ Route::match(['patch'], '/boards/{id}', function (Request $request, $id) {
 
     if (array_key_exists('title', $data))
         $board->title = $data['title'];
-    if (array_key_exists('description', $data))array: 
+
+    if (array_key_exists('description', $data))
         $board->description = $data['description'];
 
     $board->save();
     return response()->json($board);
 });
 
+
+Route::delete('/boards/{id}', function ($id) { 
+    $board = Board::findOrFail($id);
+    $board->delete();
+    return response()->noContent();
+
+});
+
+
+// Colunas Boards com TOKEN
+
+
+Route::post('/boards/{id}/columns', function (Request $request) {
+
+    $token = checkAccess($request);
+    if (!$token) {
+        return response()->json(['message' => 'Não autenticado.'], 401);
+
+    }
+
+    $data = $request->validate([
+        'board_id' => ['required', 'int'],
+        'name' => ['required', 'string', 'max:80'],
+        'order' => ['required', 'int'],
+        'wip_limit' => ['required', 'int'],
+    ]);
+
+    $column = new Column();
+    $column->board_id = $data['board_id'];
+    $column->name = $data['name'];
+    $column->order = $data['order'];
+    $column->wip_limit = $data['wip_limit'];
+    $column->save();
+
+    return response()->json($column, 201);
+});
+
+
+Route::match(['patch'], '/columns/{id}', function (Request $request, $id) {
+
+    $token = checkAccess($request);
+    if (!$token)
+        return response()->json(['message' => 'Não autenticado.'], 401);
+
+    $column = Column::findOrFail($id);
+
+ 
+    $data = $request->validate([
+        'board_id' => ['required', 'int'],
+        'name' => ['required', 'string', 'max:80'],
+        'order' => ['required', 'int'],
+        'wip_limit' => ['required', 'int'],
+    ]);
+
+    if (array_key_exists('board_id', $data))
+        $column->board_id = $data['board_id'];
+
+    if (array_key_exists('name', $data))
+        $column->name = $data['name'];
+
+    if (array_key_exists('order', $data))
+        $column->order = $data['order'];
+    
+    if (array_key_exists('wip_limit', $data))
+        $column->wip_limit = $data['wip_limit'];
+
+    $column->save();
+    return response()->json($column);
+});
+
+Route::delete('/columns/{id}', function ($id) { 
+    $column = Column::findOrFail($id);
+    $column->delete();
+    return response()->noContent();
+
+});
+
+// Cards Boards com TOKEN
+
+Route::post('/boards/{id}/cards', function (Request $request) {
+
+    $token = checkAccess($request);
+    if (!$token) {
+        return response()->json(['message' => 'Não autenticado.'], 401);
+
+    }
+
+    $data = $request->validate([
+        'board_id' => ['required', 'int'],
+        'column_id' => ['required', 'int'],
+        'title' => ['required', 'string', 'max:80'],
+        'description' => ['required', 'string'],
+        'position' => ['required', 'int'],
+        'created_by' => ['required', 'int'],
+
+    ]);
+    
+    $card = new Card();
+    $card->board_id = $data['board_id'];
+    $card->column_id = $data['column_id'];
+    $card->title = $data['title'];
+    $card->description = $data['description'];
+    $card->position = $data['position'];
+    $card->created_by = $data['created_by'];
+    $card->save();
+
+    return response()->json($card, 201);
+});
+
+
+Route::match(['patch'], '/cards/{id}', function (Request $request, $id) {
+
+    $token = checkAccess($request);
+    if (!$token)
+        return response()->json(['message' => 'Não autenticado.'], 401);
+
+    $card = Card::findOrFail($id);
+
+    $data = $request->validate([
+        'board_id' => ['required', 'int'],
+        'column_id' => ['required', 'int'],
+        'title' => ['required', 'string', 'max:80'],
+        'description' => ['required', 'string'],
+        'position' => ['required', 'int'],
+        'created_by' => ['required', 'int'],
+
+    ]);
+
+    if (array_key_exists('board_id', $data))
+        $card->board_id = $data['board_id'];
+
+    if (array_key_exists('column_id', $data))
+        $card->column_id = $data['column_id'];
+
+      if (array_key_exists('title', $data))
+        $card->title = $data['title'];
+
+        if (array_key_exists('description', $data))
+        $card->description = $data['description'];
+
+          if (array_key_exists('position', $data))
+        $card->position = $data['position'];
+
+            if (array_key_exists('created_by', $data))
+        $card->created_by = $data['created_by'];
+
+    $card->save();
+    return response()->json($card);
+});
+
+Route::delete('/cards/{id}', function ($id) { 
+    $card = Card::findOrFail($id);
+    $card->delete();
+    return response()->noContent();
+
+});
